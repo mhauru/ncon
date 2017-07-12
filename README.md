@@ -1,15 +1,14 @@
 # ncon
-ncon is a Python 3 package that implements the NCon function (at some point
-in history known as ncon) as described here:
+ncon is a Python 3 package that implements the NCon function as described here:
 https://arxiv.org/abs/1402.0939
-The Python implementation here lacks some of the fancier features described in
+This Python implementation lacks some of the fancier features described in
 the paper, but the interface is the same.
 
 ncon works with either numpy ndarrays, or the various tensor classes of this
 package:
 https://github.com/mhauru/tensors
 
-For usage instructions, check either the paper, or more my Julia version of the
+For usage instructions, check either the paper, or the Julia version of the
 same function:
 https://github.com/mhauru/NCon.jl
 
