@@ -1,5 +1,5 @@
 import numpy as np
-import collections
+from collections import Iterable
 
 """ A module for the function ncon, which does contractions of several tensors.
 """
@@ -32,7 +32,7 @@ def ncon(AA, v, order=None, forder=None, check_indices=True):
     else:
         AA = list(AA)
     v = list(v)
-    if not isinstance(v[0], collections.Iterable):
+    if not isinstance(v[0], Iterable):
         # v is not a list of lists, so make it such.
         v = [v]
     else:
