@@ -7,15 +7,16 @@ from collections import Iterable
 def ncon(AA, v, order=None, forder=None, check_indices=True):
     """ AA = [A1, A2, ..., Ap] list of tensors.
 
-    v = (v1, v2, ..., vp) tuple of lists of indices e.g. v1 = [3 4 -1] labels
+    v = (v1, v2, ..., vp) tuple of lists of indices e.g. v1 = [3, 4, -1] labels
     the three indices of tensor A1, with -1 indicating an uncontracted index
     (open leg) and 3 and 4 being the contracted indices.
 
     order, if present, contains a list of all positive indices - if not
-    [1 2 3 4 ...] by default. This is the order in which they are contracted.
+    [1, 2, 3, 4, ...] by default. This is the order in which they are
+    contracted.
 
     forder, if present, contains the final ordering of the uncontracted indices
-    - if not, [-1 -2 ..] by default.
+    - if not, [-1, -2, ..i] by default.
 
     There is some leeway in the way the inputs are given. For example,
     instead of giving a list of tensors as the first argument one can
