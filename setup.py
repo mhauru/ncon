@@ -23,5 +23,6 @@ setuptools.setup(
     ],
     keywords=["tensor networks"],
     install_requires=["numpy>=1.11.0"],
+    extras_require={"test": ["pytest", "coverage"]},
     python_requires=">=3.6",
 )
