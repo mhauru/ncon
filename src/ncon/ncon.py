@@ -1,11 +1,11 @@
-""" A module for the function ncon, which does contractions of several tensors.
+"""A module for the function ncon, which does contractions of several tensors.
 """
 import numpy as np
 from collections.abc import Iterable
 
 
-def ncon(AA, v, order=None, forder=None, check_indices=True):
-    """ AA = [A1, A2, ..., Ap] list of tensors.
+def ncon(L, v, order=None, forder=None, check_indices=True):
+    """L = [A1, A2, ..., Ap] list of tensors.
 
     v = (v1, v2, ..., vp) tuple of lists of indices e.g. v1 = [3, 4, -1] labels
     the three indices of tensor A1, with -1 indicating an uncontracted index
@@ -28,10 +28,10 @@ def ncon(AA, v, order=None, forder=None, check_indices=True):
     # We want to handle the tensors as a list, regardless of what kind
     # of iterable we are given. In addition, if only a single element is
     # given, we make list out of it. Inputs are assumed to be non-empty.
-    if hasattr(AA, "shape"):
-        AA = [AA]
+    if hasattr(L, "shape"):
+        L = [L]
     else:
-        AA = list(AA)
+        L = list(L)
     v = list(v)
     if not isinstance(v[0], Iterable):
         # v is not a list of lists, so make it such.
@@ -46,11 +46,11 @@ def ncon(AA, v, order=None, forder=None, check_indices=True):
 
     if check_indices:
         # Raise a RuntimeError if the indices are wrong.
-        do_check_indices(AA, v, order, forder)
+        do_check_indices(L, v, order, forder)
 
     # If the graph is dinconnected, connect it with trivial indices that
     # will be contracted at the very end.
-    connect_graph(AA, v, order)
+    connect_graph(L, v, order)
 
     while len(order) > 0:
         tcon = get_tcon(v, order[0])  # tcon = tensors to be contracted
@@ -66,22 +66,22 @@ def ncon(AA, v, order=None, forder=None, check_indices=True):
         pos1, pos2 = get_pos(v, tcon, icon)
         if tracing:
             # Trace on a tensor
-            new_A = trace(AA[tcon[0]], axis1=pos1[0], axis2=pos1[1])
+            new_A = trace(L[tcon[0]], axis1=pos1[0], axis2=pos1[1])
         else:
             # Contraction of 2 tensors
-            new_A = con(AA[tcon[0]], AA[tcon[1]], (pos1, pos2))
-        AA.append(new_A)
+            new_A = con(L[tcon[0]], L[tcon[1]], (pos1, pos2))
+        L.append(new_A)
         v.append(find_newv(v, tcon, icon))  # Add the v for the new tensor
         for i in sorted(tcon, reverse=True):
             # Delete the contracted tensors and indices from the lists.
             # tcon is reverse sorted so that tensors are removed starting from
-            # the end of AA, otherwise the order would get messed.
-            del AA[i]
+            # the end of L, otherwise the order would get messed.
+            del L[i]
             del v[i]
         order = renew_order(order, icon)  # Update order
 
     vlast = v[0]
-    A = AA[0]
+    A = L[0]
     A = permute_final(A, vlast, forder)
     return A
 
@@ -90,7 +90,7 @@ def ncon(AA, v, order=None, forder=None, check_indices=True):
 
 
 def create_order(v):
-    """ Identify all unique, positive indices and return them sorted. """
+    """Identify all unique, positive indices and return them sorted."""
     flat_v = sum(v, [])
     x = [i for i in flat_v if i > 0]
     # Converting to a set and back removes duplicates
@@ -99,7 +99,7 @@ def create_order(v):
 
 
 def create_forder(v):
-    """ Identify all unique, negative indices and return them reverse sorted
+    """Identify all unique, negative indices and return them reverse sorted
     (-1 first).
     """
     flat_v = sum(v, [])
@@ -109,16 +109,16 @@ def create_forder(v):
     return sorted(x, reverse=True)
 
 
-def connect_graph(AA, v, order):
-    """ Connect the graph of tensors to be contracted by trivial
+def connect_graph(L, v, order):
+    """Connect the graph of tensors to be contracted by trivial
     indices, if necessary. Add these trivial indices to the end of the
     contraction order.
 
-    AA, v and order are modified in place.
+    L, v and order are modified in place.
     """
     # Build ccomponents, a list of the connected components of the graph,
     # where each component is represented by a a set of indices.
-    unvisited = set(range(len(AA)))
+    unvisited = set(range(len(L)))
     visited = set()
     ccomponents = []
     while unvisited:
@@ -130,7 +130,7 @@ def connect_graph(AA, v, order):
             unvisited.discard(i)
             component.add(i)
             visited.add(i)
-            # Get the indices of tensors neighbouring AA[i].
+            # Get the indices of tensors neighbouring L[i].
             i_inds = set(v[i])
             neighs = (
                 j for j, j_inds in enumerate(v) if i_inds.intersection(j_inds)
@@ -146,18 +146,18 @@ def connect_graph(AA, v, order):
     c = ccomponents.pop().pop()
     while ccomponents:
         d = ccomponents.pop().pop()
-        A_c = AA[c]
-        A_d = AA[d]
+        A_c = L[c]
+        A_d = L[d]
         c_axis = len(v[c])
         d_axis = len(v[d])
         try:
-            AA[c] = A_c.expand_dims(c_axis, direction=1)
+            L[c] = A_c.expand_dims(c_axis, direction=1)
         except AttributeError:
-            AA[c] = np.expand_dims(A_c, c_axis)
+            L[c] = np.expand_dims(A_c, c_axis)
         try:
-            AA[d] = A_d.expand_dims(d_axis, direction=-1)
+            L[d] = A_d.expand_dims(d_axis, direction=-1)
         except AttributeError:
-            AA[d] = np.expand_dims(A_d, d_axis)
+            L[d] = np.expand_dims(A_d, d_axis)
         try:
             dim_num = max(order) + 1
         except ValueError:
@@ -169,7 +169,7 @@ def connect_graph(AA, v, order):
 
 
 def get_tcon(v, index):
-    """ Gets the list indices in AA of the tensors that have index as their
+    """Gets the list indices in L of the tensors that have index as their
     leg.
     """
     tcon = []
@@ -202,8 +202,9 @@ def get_tcon(v, index):
 
 
 def get_icon(v, tcon):
-    """ Returns a list of indices that are to be contracted when contractions
-    between the two tensors numbered in tcon are contracted. """
+    """Returns a list of indices that are to be contracted when contractions
+    between the two tensors numbered in tcon are contracted.
+    """
     inds1 = v[tcon[0]]
     inds2 = v[tcon[1]]
     icon = set(inds1).intersection(inds2)
@@ -212,7 +213,7 @@ def get_icon(v, tcon):
 
 
 def get_pos(v, tcon, icon):
-    """ Get the positions of the indices icon in the list of legs the tensors
+    """Get the positions of the indices icon in the list of legs the tensors
     tcon to be contracted.
     """
     pos1 = [[i for i, x in enumerate(v[tcon[0]]) if x == e] for e in icon]
@@ -226,7 +227,7 @@ def get_pos(v, tcon, icon):
 
 
 def find_newv(v, tcon, icon):
-    """ Find the list of indices for the new tensor after contraction of
+    """Find the list of indices for the new tensor after contraction of
     indices icon of the tensors tcon.
     """
     if len(tcon) == 2:
@@ -238,12 +239,12 @@ def find_newv(v, tcon, icon):
 
 
 def renew_order(order, icon):
-    """ Returns the new order with the contracted indices removed from it. """
+    """Returns the new order with the contracted indices removed from it."""
     return [i for i in order if i not in icon]
 
 
 def permute_final(A, v, forder):
-    """ Returns the final tensor A with its legs permuted to the order given
+    """Returns the final tensor A with its legs permuted to the order given
     in forder.
     """
     perm = [v.index(i) for i in forder]
@@ -254,9 +255,9 @@ def permute_final(A, v, forder):
     return permuted
 
 
-def do_check_indices(AA, v, order, forder):
-    """ Check that
-    1) the number of tensors in AA matches the number of index lists in v.
+def do_check_indices(L, v, order, forder):
+    """Check that
+    1) the number of tensors in L matches the number of index lists in v.
     2) every tensor is given the right number of indices.
     3) every contracted index is featured exactly twice and every free index
        exactly once.
@@ -264,24 +265,24 @@ def do_check_indices(AA, v, order, forder):
     """
 
     # 1)
-    if len(AA) != len(v):
+    if len(L) != len(v):
         raise ValueError(
             (
                 "In ncon.do_check_indices, the number of tensors %i"
                 " does not match the number of index lists %i"
             )
-            % (len(AA), len(v))
+            % (len(L), len(v))
         )
 
     # 2)
-    # Create a list of lists with the shapes of each A in AA.
-    shapes = list(map(lambda A: list(A.shape), AA))
+    # Create a list of lists with the shapes of each A in L.
+    shapes = list(map(lambda A: list(A.shape), L))
     for i, inds in enumerate(v):
         if len(inds) != len(shapes[i]):
             raise ValueError(
                 (
                     "In ncon.do_check_indices, len(v[%i])=%i does not match "
-                    "the numbers of indices of AA[%i] = %i"
+                    "the numbers of indices of L[%i] = %i"
                 )
                 % (i, len(inds), i, len(shapes[i]))
             )
@@ -311,9 +312,9 @@ def do_check_indices(AA, v, order, forder):
             A0, ind0 = o[0]
             A1, ind1 = o[1]
             try:
-                compatible = AA[A0].compatible_indices(AA[A1], ind0, ind1)
+                compatible = L[A0].compatible_indices(L[A1], ind0, ind1)
             except AttributeError:
-                compatible = AA[A0].shape[ind0] == AA[A1].shape[ind1]
+                compatible = L[A0].shape[ind0] == L[A1].shape[ind1]
             if not compatible:
                 raise ValueError(
                     "In ncon.do_check_indices, for the contraction index %i, "
