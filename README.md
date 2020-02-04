@@ -1,4 +1,6 @@
 # ncon
+[![][travis-img]][travis-url] [![][codecov-img]][codecov-url]
+
 ncon is a Python 3 package that implements the NCon function as described here:
 https://arxiv.org/abs/1402.0939
 This Python implementation lacks some of the fancier features described in
@@ -37,3 +39,7 @@ def ncon(AA, v, order=None, forder=None, check_indices=True):
 
 ```
 
+[travis-img]: https://travis-ci.org/mhauru/ncon.svg?branch=master
+[travis-url]: https://travis-ci.org/mhauru/ncon
+[codecov-img]: https://codecov.io/gh/mhauru/ncon/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/mhauru/ncon
