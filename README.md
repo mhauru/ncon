@@ -7,7 +7,7 @@ This Python implementation lacks some of the fancier features described in
 the paper, but the interface is the same.
 
 ncon requires numpy and works with numpy ndarrays. It also works with the
-various tensors from (this)[https://github.com/mhauru/tensors] package, but
+various tensors from [this](https://github.com/mhauru/tensors) package, but
 does not require it.
 
 ## Installation
@@ -28,15 +28,15 @@ The second argument `v` is a list of list, one for each tensor in `L`.
 Each `v[i]` consists of integers, each of which labels an index of `L[i]`.
 Positive labels mark indices which are to be contracted (summed over).
 So if for instance `v[m][i] == 2` and `v[n][j] == 2`, then the `i`th index of
-`L[m]` and the `j`th index of `L[n]` are to be summed over.
+`L[m]` and the `j`th index of `L[n]` are to be identified and summed over.
 Negative labels mark indices which are to remain free (uncontracted).
 
 The keyword argument `order` is a list of all the positive labels, which
 specifies the order in which the pair-wise tensor contractions are to be done.
-By default it is `sorted(all-positive-numbers-in-v)`. Note that whenever an
-index joining two tensors is about to be contracted together, `ncon` contracts
-at the same time all indices connecting these two tensors, even if some of them
-only come up later in order.
+By default it is `sorted(all-positive-numbers-in-v)`, so for instance
+`[1,2,...]`. Note that whenever an index joining two tensors is about to be
+contracted together, `ncon` contracts at the same time all indices connecting
+these two tensors, even if some of them only come up later in order.
 
 Correspondingly `forder` specifies the order to which the remaining free
 indices are to be permuted. By default it is
@@ -57,7 +57,8 @@ generate index lists and contractions.
 Here's a few examples, straight from the test file.
 
 A matrix product:
-```from ncon import ncon
+```
+from ncon import ncon
 a = np.random.randn(3, 4)
 b = np.random.randn(4, 5)
 ab_ncon = ncon([a, b], ((-1, 1), (1, -2)))
@@ -84,11 +85,10 @@ assert np.allclose(result_ncon, result_np)
 Notice that the network here is disconnected, `d` and `e` are not contracted
 with any of the others. When contracting disconnected networks, the connected
 parts are always contracted first, and their tensor product is taken at the
-end. Traces are also okay, like here on two indices of `c`.
-
-By default, the contractions are done in the order [1,2,3,4]. This may not be
-the optimal choice, in which case we should specify a better contraction order
-as a keyword argument.
+end. Traces are also okay, like here on two indices of `c`. By default, the
+contractions are done in the order [1,2,3,4,5]. This may not be the optimal
+choice, in which case we should specify a better contraction order as a keyword
+argument.
 
 [travis-img]: https://travis-ci.org/mhauru/ncon.svg?branch=master
 [travis-url]: https://travis-ci.org/mhauru/ncon
