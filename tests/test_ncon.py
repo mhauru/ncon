@@ -17,7 +17,7 @@ def test_disconnected():
     a = np.random.randn(2, 3)
     b = np.random.randn(4)
     ab_ncon = ncon((a, b), ([-3, -2], [-1]))
-    ab_np = np.einsum("ij,k -> kji", a, b)
+    ab_np = np.einsum("ij, k -> kji", a, b)
     assert np.allclose(ab_ncon, ab_np)
 
 
@@ -31,7 +31,7 @@ def test_permutation():
 def test_trace():
     a = np.random.randn(3, 2, 3)
     atr_ncon = ncon((a,), ([1, -1, 1],))
-    atr_np = np.einsum("iji->j", a)
+    atr_np = np.einsum("iji -> j", a)
     assert np.allclose(atr_ncon, atr_np)
 
 
@@ -44,5 +44,5 @@ def test_large_contraction():
     result_ncon = ncon(
         (a, b, c, d, e), ([3, -2, 2], [2, 3, 1, 4, 1], [4, -1], [5], [5, -3])
     )
-    result_np = np.einsum("ijk,kilml,mh,q,qp->hjp", a, b, c, d, e)
+    result_np = np.einsum("ijk, kilml, mh, q, qp -> hjp", a, b, c, d, e)
     assert np.allclose(result_ncon, result_np)
