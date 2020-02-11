@@ -7,8 +7,8 @@ This Python implementation lacks some of the fancier features described in
 the paper, but the interface is the same.
 
 ncon requires numpy and works with numpy ndarrays. It also works with the
-various tensors from [this](https://github.com/mhauru/tensors) package, but
-does not require it.
+various tensors from [this](https://github.com/mhauru/abeliantensors) package,
+but does not require it.
 
 ## Installation
 
