@@ -68,7 +68,7 @@ assert np.allclose(ab_ncon, ab_np)
 Here the last index of `a` and the first index of `b` are contracted.
 The result is a tensor with two free indices, labeled by `-1` and `-2`.
 The one labeled with `-1` becomes the first index of the result. If we gave the
-additional argument `forder=[-2,-1]` the tranpose would be returned instead.
+additional argument `forder=[-2,-1]` the transpose would be returned instead.
 
 A more complicated example:
 ```a = np.random.randn(3, 4, 5)
