@@ -2,9 +2,10 @@
 """
 import numpy as np
 from collections.abc import Iterable
+import opt_einsum
 
-
-def ncon(L, v, order=None, forder=None, check_indices=True):
+def ncon(L, v, order=None, forder=None, check_indices=True, backend = 'numpy',
+         opt_einsum_strategy = 'auto'):
     """L = [A1, A2, ..., Ap] list of tensors.
 
     v = (v1, v2, ..., vp) tuple of lists of indices e.g. v1 = [3, 4, -1] labels
@@ -24,6 +25,10 @@ def ncon(L, v, order=None, forder=None, check_indices=True):
     single tensor by itself (anything that has the attribute "shape"
     will be considered a tensor).
     """
+
+    # Check that contraction backend is valid
+    if backend not in ['numpy', 'opt_einsum']:
+      raise RuntimeError(f"Unknown contraction backend '{backend}'")
 
     # We want to handle the tensors as a list, regardless of what kind
     # of iterable we are given. In addition, if only a single element is
@@ -47,6 +52,12 @@ def ncon(L, v, order=None, forder=None, check_indices=True):
     if check_indices:
         # Raise a RuntimeError if the indices are wrong.
         do_check_indices(L, v, order, forder)
+
+    # If we use opt_einsum as a contraction backend we are almost done as
+    # permutations are handled by the backend
+    if backend == 'opt_einsum':
+      opt_einsum_args = [arg for pair in zip(L, v) for arg in pair]
+      return opt_einsum.contract(*opt_einsum_args, forder)
 
     # If the graph is dinconnected, connect it with trivial indices that
     # will be contracted at the very end.
