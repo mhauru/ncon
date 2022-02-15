@@ -22,7 +22,7 @@ setuptools.setup(
         "Topic :: Scientific/Engineering",
     ],
     keywords=["tensor networks"],
-    install_requires=["numpy>=1.11.0"],
+    install_requires=["numpy>=1.11.0", "opt-einsum>=3.3.0"],
     extras_require={"tests": ["pytest", "coverage"]},
     python_requires=">=3.6",
 )
