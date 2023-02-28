@@ -39,10 +39,24 @@ def ncon(L, v, order=None, forder=None, check_indices=True):
     else:
         v = list(map(list, v))
 
+    alias = dict()
+    # Start cheking if supplied indexes are in string format
+    if check_if_str(v):
+        alias = interpret_idx(v)
+        v = str_to_int_idx(v,alias)
+    
     if order is None:
         order = create_order(v)
+    else:
+        if check_if_str(order):
+            order = str_to_int_idx(order,alias)
+
     if forder is None:
         forder = create_forder(v)
+    else:
+        if check_if_str(forder):
+            forder = str_to_int_idx(forder,alias)
+    # If the indexes where in string fromat they where parsed to ints
 
     if check_indices:
         # Raise a RuntimeError if the indices are wrong.
@@ -88,6 +102,51 @@ def ncon(L, v, order=None, forder=None, check_indices=True):
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+def check_if_str (v):
+    is_str = True
+    for lst in v:
+        if isinstance(lst,Iterable):
+            for element in lst:
+                if(type(element)!=str):
+                    is_str = False
+                    break
+        else:
+            if(type(lst)!=str):
+                is_str = False
+                break
+        if is_str ==False:
+            break
+    return is_str
+
+def interpret_idx(v):
+    alias = dict()
+    contract = 1
+    no_contract = -1
+    for idxs in v:
+        for str_idx in idxs:
+            if str_idx in alias:
+                alias[str_idx]=contract
+            else: 
+                alias[str_idx] = no_contract
+    for str_idx in alias:
+        if alias[str_idx] ==-1:
+            alias[str_idx] = no_contract
+            no_contract -=1
+        if alias[str_idx] == 1:
+            alias[str_idx] = contract
+            contract +=1
+    return alias
+
+def str_to_int_idx(array,alias):
+    for idx in range(0,len(array)):
+        if isinstance(array[idx],Iterable) and not isinstance(array[idx],str) :
+            print(len(array[idx]))
+            for idx2 in range(0,len(array[idx])):
+                # print(idx2)
+                array[idx][idx2] = alias[array[idx][idx2]]
+        else:
+                array[idx] = alias[array[idx]]
+    return array
 
 def create_order(v):
     """Identify all unique, positive indices and return them sorted."""
