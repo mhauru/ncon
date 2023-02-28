@@ -102,7 +102,8 @@ def ncon(L, v, order=None, forder=None, check_indices=True):
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-def check_if_str (v):
+def check_if_str(v):
+    """Identify if supplied indexes are in string form."""
     is_str = True
     for lst in v:
         if isinstance(lst,Iterable):
@@ -119,6 +120,7 @@ def check_if_str (v):
     return is_str
 
 def interpret_idx(v):
+    """This functions maps the str indexes to their respective numerical alias and returns as dict str:num"""
     alias = dict()
     contract = 1
     no_contract = -1
@@ -138,6 +140,7 @@ def interpret_idx(v):
     return alias
 
 def str_to_int_idx(array,alias):
+    """This functions updates a array of str indexes to numerical indexes"""
     for idx in range(0,len(array)):
         if isinstance(array[idx],Iterable) and not isinstance(array[idx],str) :
             print(len(array[idx]))
