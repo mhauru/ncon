@@ -11,6 +11,8 @@ def test_matrixproduct():
     ab_ncon = ncon([a, b], ((-1, 1), (1, -2)))
     ab_np = np.dot(a, b)
     assert np.allclose(ab_ncon, ab_np)
+    ab_ncon_str = ncon([a, b], (("a", "b"), ("b", "c")), order=["b"], forder=["a", "c"])
+    assert np.allclose(ab_ncon_str, ab_np)
 
 
 def test_disconnected():
@@ -19,6 +21,13 @@ def test_disconnected():
     ab_ncon = ncon((a, b), ([-3, -2], [-1]))
     ab_np = np.einsum("ij, k -> kji", a, b)
     assert np.allclose(ab_ncon, ab_np)
+    ab_ncon_str = ncon(
+        (a, b),
+        (["x", "loong"], ["blahblah"]),
+        order=[],
+        forder=["blahblah", "loong", "x"],
+    )
+    assert np.allclose(ab_ncon_str, ab_np)
 
 
 def test_permutation():
@@ -26,6 +35,10 @@ def test_permutation():
     aperm_ncon = ncon(a, [-4, -2, -1, -3])
     aperm_np = np.transpose(a, [2, 1, 3, 0])
     assert np.allclose(aperm_ncon, aperm_np)
+    aperm_ncon_str = ncon(
+        a, ["4", "2", "1", "3"], order=[], forder=["1", "2", "3", "4"]
+    )
+    assert np.allclose(aperm_ncon_str, aperm_np)
 
 
 def test_trace():
@@ -33,6 +46,13 @@ def test_trace():
     atr_ncon = ncon((a,), ([1, -1, 1],))
     atr_np = np.einsum("iji -> j", a)
     assert np.allclose(atr_ncon, atr_np)
+    atr_ncon_str = ncon(
+        (a,),
+        [["traced", "not traced", "traced"]],
+        order=["traced"],
+        forder=["not traced"],
+    )
+    assert np.allclose(atr_ncon_str, atr_np)
 
 
 def test_large_contraction():
@@ -46,3 +66,10 @@ def test_large_contraction():
     )
     result_np = np.einsum("ijk, kilml, mh, q, qp -> hjp", a, b, c, d, e)
     assert np.allclose(result_ncon, result_np)
+    result_ncon_str = ncon(
+        (a, b, c, d, e),
+        (["3", "-2", "2"], ["2", "3", "1", "4", "1"], ["4", "-1"], ["5"], ["5", "-3"]),
+        order=("1", "2", "3", "4", "5"),
+        forder=("-1", "-2", "-3"),
+    )
+    assert np.allclose(result_ncon_str, result_np)
