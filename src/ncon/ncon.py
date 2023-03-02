@@ -1,69 +1,98 @@
 """A module for the function ncon, which does contractions of several tensors.
 """
-import numpy as np
 from collections.abc import Iterable
+import numpy as np
 
 
 def ncon(L, v, order=None, forder=None, check_indices=True):
-    """L = [A1, A2, ..., Ap] list of tensors.
+    """Contract a tensor network.
 
-    v = (v1, v2, ..., vp) tuple of lists of indices e.g. v1 = [3, 4, -1] labels
-    the three indices of tensor A1, with -1 indicating an uncontracted index
-    (open leg) and 3 and 4 being the contracted indices.
+    Arguments:
+        L = [A1, A2, ..., Ap]: A list of tensors to contract.
 
-    order, if present, contains a list of all positive indices - if not
-    [1, 2, 3, 4, ...] by default. This is the order in which they are
-    contracted.
+        v = [v1, v2, ..., vp]: A list of lists of indices e.g. v1 = [3, 4, -1] labels
+        the three indices of tensor A1, with -1 indicating an uncontracted index (open
+        leg) and 3 and 4 being the contracted indices.
 
-    forder, if present, contains the final ordering of the uncontracted indices
-    - if not, [-1, -2, ..i] by default.
+        order: Optional. If present, contains a list of all contracted indices - if not
+        [1, 2, 3, 4, ...] by default. This is the order in which they are contracted. If
+        indices are not integers, order must be provided.
 
-    There is some leeway in the way the inputs are given. For example,
-    instead of giving a list of tensors as the first argument one can
-    give some different iterable of tensors, such as a tuple, or a
-    single tensor by itself (anything that has the attribute "shape"
-    will be considered a tensor).
+        forder: Optional. If present, contains the final ordering of the uncontracted
+        indices - if not, [-1, -2, ...] by default. If indices are not integers, forder
+        must be provided.
+
+    Returns:
+        A single tensor that is the result of the contraction.
+
+    There is some leeway in the way the inputs are given. For example, instead of giving
+    a list of tensors as the first argument one can give some different iterable of
+    tensors, such as a tuple, or a single tensor by itself (anything that has the
+    attribute "shape" will be considered a tensor).
+
+    Indices can be integers or strings. With integers, we assume that positive indices
+    are contracted and negative indices are uncontracted, and the contraction order
+    and final ordering follow the ordering of the integers. With strings, we assume that
+    any repeated indices are contracted, and the contraction and final order have to be
+    provided by the user.
     """
-
-    # We want to handle the tensors as a list, regardless of what kind
-    # of iterable we are given. In addition, if only a single element is
-    # given, we make list out of it. Inputs are assumed to be non-empty.
+    # We want to handle the tensors as a list, regardless of what kind of iterable we
+    # are given. In addition, if only a single element is given, we make list out of it.
+    # Inputs are assumed to be non-empty.
     if hasattr(L, "shape"):
         L = [L]
     else:
         L = list(L)
+
+    if not is_non_string_iterable(v):
+        raise ValueError("v must be a non-string Iterable.")
     v = list(v)
-    if not isinstance(v[0], Iterable):
+    if not is_non_string_iterable(v[0]):
         # v is not a list of lists, so make it such.
         v = [v]
     else:
         v = list(map(list, v))
 
-    alias = dict()
-    # Start cheking if supplied indexes are in string format
-    if check_if_str(v):
+    # If indices are strings, convert them to integers.
+    string_indices = check_if_str(v)
+    if string_indices:
+        if order is None:
+            msg = "If string indices are used, contraction order must be specified."
+            raise ValueError(msg)
+        if forder is None:
+            msg = "If string indices are used, final order (forder) must be specified."
+            raise ValueError(msg)
+        # Convert the strings to integers.
         alias = interpret_idx(v)
-        v = str_to_int_idx(v,alias)
-    
-    if order is None:
-        order = create_order(v)
+        v = str_to_int_idx(v, alias)
+        order = str_to_int_idx(order, alias)
+        forder = str_to_int_idx(forder, alias)
     else:
-        if check_if_str(order):
-            order = str_to_int_idx(order,alias)
+        if order is None:
+            order = create_order(v)
+        else:
+            if not is_non_string_iterable(order):
+                raise ValueError(
+                    "If order is provided, it must be a non-string iterable."
+                )
+            order = list(order)
+        if forder is None:
+            forder = create_forder(v)
+        else:
+            if not is_non_string_iterable(forder):
+                raise ValueError(
+                    "If forder is provided, it must be a non-string iterable."
+                )
+            forder = list(forder)
 
-    if forder is None:
-        forder = create_forder(v)
-    else:
-        if check_if_str(forder):
-            forder = str_to_int_idx(forder,alias)
-    # If the indexes where in string fromat they where parsed to ints
-
+    # TODO This should come before the string -> int conversation, because the error
+    # messages are otherwise confusing.
     if check_indices:
         # Raise a RuntimeError if the indices are wrong.
         do_check_indices(L, v, order, forder)
 
-    # If the graph is dinconnected, connect it with trivial indices that
-    # will be contracted at the very end.
+    # If the graph is disconnected, connect it with trivial indices that will be
+    # contracted at the very end.
     connect_graph(L, v, order)
 
     while len(order) > 0:
@@ -102,54 +131,54 @@ def ncon(L, v, order=None, forder=None, check_indices=True):
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+
+def is_non_string_iterable(x):
+    """Return True if x is an iterable but not a string, otherwise False."""
+    return isinstance(x, Iterable) and not isinstance(x, str)
+
+
 def check_if_str(v):
-    """Identify if supplied indexes are in string form."""
-    is_str = True
+    """Identify if supplied indices are in string form."""
     for lst in v:
-        if isinstance(lst,Iterable):
+        if isinstance(lst, Iterable):
             for element in lst:
-                if(type(element)!=str):
-                    is_str = False
-                    break
-        else:
-            if(type(lst)!=str):
-                is_str = False
-                break
-        if is_str ==False:
-            break
-    return is_str
+                if not isinstance(element, str):
+                    return False
+        elif not isinstance(lst, str):
+            return False
+    return True
+
 
 def interpret_idx(v):
-    """This functions maps the str indexes to their respective numerical alias and returns as dict str:num"""
+    """Return a dict mapping the string indices to integers."""
     alias = dict()
     contract = 1
     no_contract = -1
     for idxs in v:
         for str_idx in idxs:
             if str_idx in alias:
-                alias[str_idx]=contract
-            else: 
+                if alias[str_idx] == contract:
+                    raise ValueError(f"{str_idx} appears more than twice in v")
+                else:
+                    alias[str_idx] = contract
+            else:
                 alias[str_idx] = no_contract
     for str_idx in alias:
-        if alias[str_idx] ==-1:
+        if alias[str_idx] == -1:
             alias[str_idx] = no_contract
-            no_contract -=1
+            no_contract -= 1
         if alias[str_idx] == 1:
             alias[str_idx] = contract
-            contract +=1
+            contract += 1
     return alias
 
-def str_to_int_idx(array,alias):
-    """This functions updates a array of str indexes to numerical indexes"""
-    for idx in range(0,len(array)):
-        if isinstance(array[idx],Iterable) and not isinstance(array[idx],str) :
-            print(len(array[idx]))
-            for idx2 in range(0,len(array[idx])):
-                # print(idx2)
-                array[idx][idx2] = alias[array[idx][idx2]]
-        else:
-                array[idx] = alias[array[idx]]
-    return array
+
+def str_to_int_idx(lst, alias):
+    """Update a list of string indices to integer indices."""
+    if not is_non_string_iterable(lst):
+        return alias[lst]
+    return list(map(lambda x: str_to_int_idx(x, alias), lst))
+
 
 def create_order(v):
     """Identify all unique, positive indices and return them sorted."""
@@ -194,9 +223,7 @@ def connect_graph(L, v, order):
             visited.add(i)
             # Get the indices of tensors neighbouring L[i].
             i_inds = set(v[i])
-            neighs = (
-                j for j, j_inds in enumerate(v) if i_inds.intersection(j_inds)
-            )
+            neighs = (j for j, j_inds in enumerate(v) if i_inds.intersection(j_inds))
             for neigh in neighs:
                 if neigh not in visited:
                     to_visit.add(neigh)
@@ -220,10 +247,10 @@ def connect_graph(L, v, order):
             L[d] = A_d.expand_dims(d_axis, direction=-1)
         except AttributeError:
             L[d] = np.expand_dims(A_d, d_axis)
-        try:
-            dim_num = max(order) + 1
-        except ValueError:
-            dim_num = 1
+        # Find a new symbol for the trivial contraction.
+        dim_num = 1
+        while dim_num in order:
+            dim_num += 1
         v[c].append(dim_num)
         v[d].append(dim_num)
         order.append(dim_num)
@@ -243,8 +270,7 @@ def get_tcon(v, index):
     # checks should in fact be unnecessary.
     if l > 2:
         raise ValueError(
-            "In ncon.get_tcon, more than two tensors share a contraction "
-            "index."
+            "In ncon.get_tcon, more than two tensors share a contraction " "index."
         )
     elif l < 1:
         raise ValueError(
@@ -357,9 +383,7 @@ def do_check_indices(L, v, order, forder):
     # For t, o in zip(v_pairs, v_sum) t is the tuple of the number of
     # the tensor and the index and o is the contraction order of that
     # index. We group these tuples by the contraction order.
-    order_groups = [
-        [t for t, o in zip(v_pairs, v_sum) if o == e] for e in order
-    ]
+    order_groups = [[t for t, o in zip(v_pairs, v_sum) if o == e] for e in order]
     forder_groups = [[1 for fo in v_sum if fo == e] for e in forder]
     for i, o in enumerate(order_groups):
         if len(o) != 2:
@@ -381,8 +405,7 @@ def do_check_indices(L, v, order, forder):
                 raise ValueError(
                     "In ncon.do_check_indices, for the contraction index %i, "
                     "the leg %i of tensor number %i and the leg %i of tensor "
-                    "number %i are not compatible."
-                    % (order[i], ind0, A0, ind1, A1)
+                    "number %i are not compatible." % (order[i], ind0, A0, ind1, A1)
                 )
     for i, fo in enumerate(forder_groups):
         if len(fo) != 1:
