@@ -10,89 +10,49 @@ def ncon(L, v, order=None, forder=None, check_indices=True):
     Arguments:
         L = [A1, A2, ..., Ap]: A list of tensors to contract.
 
-        v = [v1, v2, ..., vp]: A list of lists of indices e.g. v1 = [3, 4, -1] labels
-        the three indices of tensor A1, with -1 indicating an uncontracted index (open
-        leg) and 3 and 4 being the contracted indices.
+        v = [v1, v2, ..., vp]: A list of lists of indices e.g. v1 = [3, 4, -1]
+        labels the three indices of tensor A1, with -1 indicating an
+        uncontracted index (open leg) and 3 and 4 being the contracted indices.
 
-        order: Optional. If present, contains a list of all contracted indices - if not
-        [1, 2, 3, 4, ...] by default. This is the order in which they are contracted. If
-        indices are not integers, order must be provided.
+        order: Optional. If present, contains a list of all contracted indices
+        - if not [1, 2, 3, 4, ...] by default. This is the order in which they
+        are contracted. If indices are not integers, order must be provided.
 
-        forder: Optional. If present, contains the final ordering of the uncontracted
-        indices - if not, [-1, -2, ...] by default. If indices are not integers, forder
-        must be provided.
+        forder: Optional. If present, contains the final ordering of the
+        uncontracted indices - if not, [-1, -2, ...] by default. If indices are
+        not integers, forder must be provided.
 
     Returns:
         A single tensor that is the result of the contraction.
 
-    There is some leeway in the way the inputs are given. For example, instead of giving
-    a list of tensors as the first argument one can give some different iterable of
-    tensors, such as a tuple, or a single tensor by itself (anything that has the
-    attribute "shape" will be considered a tensor).
+    There is some leeway in the way the inputs are given. For example, instead
+    of giving a list of tensors as the first argument one can give some
+    different iterable of tensors, such as a tuple, or a single tensor by
+    itself (anything that has the attribute "shape" will be considered a
+    tensor).
 
-    Indices can be integers or strings. With integers, we assume that positive indices
-    are contracted and negative indices are uncontracted, and the contraction order
-    and final ordering follow the ordering of the integers. With strings, we assume that
-    any repeated indices are contracted, and the contraction and final order have to be
-    provided by the user.
+    Indices can be integers or other objects that aren't iterable, with
+    exception of strings which are allowed. With integers, we assume that
+    positive indices are contracted and negative indices are uncontracted, and
+    the contraction order and final ordering follow the ordering of the
+    integers, unless the caller specifies otherwise. With any other types of
+    index objects (e.g. strings) we assume that any repeated indices are
+    contracted, and the contraction and final order have to be provided by the
+    caller.
     """
-    # We want to handle the tensors as a list, regardless of what kind of iterable we
-    # are given. In addition, if only a single element is given, we make list out of it.
-    # Inputs are assumed to be non-empty.
-    if hasattr(L, "shape"):
-        L = [L]
-    else:
-        L = list(L)
+    # Prepare the arguments into a standard format, with defaults filled in
+    # as needed. Raise exceptions if the arguments don't make sense.
+    L = preprocess_tensors(L)
+    v = preprocess_indices(v)
+    order = preprocess_forder_order(order, v, "order")
+    forder = preprocess_forder_order(forder, v, "forder")
 
-    if not is_non_string_iterable(v):
-        raise ValueError("v must be a non-string Iterable.")
-    v = list(v)
-    if not is_non_string_iterable(v[0]):
-        # v is not a list of lists, so make it such.
-        v = [v]
-    else:
-        v = list(map(list, v))
-
-    # If indices are strings, convert them to integers.
-    string_indices = check_if_str(v)
-    if string_indices:
-        if order is None:
-            msg = "If string indices are used, contraction order must be specified."
-            raise ValueError(msg)
-        if forder is None:
-            msg = "If string indices are used, final order (forder) must be specified."
-            raise ValueError(msg)
-        # Convert the strings to integers.
-        alias = interpret_idx(v)
-        v = str_to_int_idx(v, alias)
-        order = str_to_int_idx(order, alias)
-        forder = str_to_int_idx(forder, alias)
-    else:
-        if order is None:
-            order = create_order(v)
-        else:
-            if not is_non_string_iterable(order):
-                raise ValueError(
-                    "If order is provided, it must be a non-string iterable."
-                )
-            order = list(order)
-        if forder is None:
-            forder = create_forder(v)
-        else:
-            if not is_non_string_iterable(forder):
-                raise ValueError(
-                    "If forder is provided, it must be a non-string iterable."
-                )
-            forder = list(forder)
-
-    # TODO This should come before the string -> int conversation, because the error
-    # messages are otherwise confusing.
     if check_indices:
         # Raise a RuntimeError if the indices are wrong.
         do_check_indices(L, v, order, forder)
 
-    # If the graph is disconnected, connect it with trivial indices that will be
-    # contracted at the very end.
+    # If the graph is disconnected, connect it with trivial indices that will
+    # be contracted at the very end.
     connect_graph(L, v, order)
 
     while len(order) > 0:
@@ -137,47 +97,69 @@ def is_non_string_iterable(x):
     return isinstance(x, Iterable) and not isinstance(x, str)
 
 
-def check_if_str(v):
-    """Identify if supplied indices are in string form."""
+def indices_are_ints(v):
+    """Return True if all indices are integers, False otherwise."""
     for lst in v:
-        if isinstance(lst, Iterable):
-            for element in lst:
-                if not isinstance(element, str):
-                    return False
-        elif not isinstance(lst, str):
-            return False
+        for element in lst:
+            if not isinstance(element, int):
+                return False
     return True
 
 
-def interpret_idx(v):
-    """Return a dict mapping the string indices to integers."""
-    alias = dict()
-    contract = 1
-    no_contract = -1
-    for idxs in v:
-        for str_idx in idxs:
-            if str_idx in alias:
-                if alias[str_idx] == contract:
-                    raise ValueError(f"{str_idx} appears more than twice in v")
-                else:
-                    alias[str_idx] = contract
-            else:
-                alias[str_idx] = no_contract
-    for str_idx in alias:
-        if alias[str_idx] == -1:
-            alias[str_idx] = no_contract
-            no_contract -= 1
-        if alias[str_idx] == 1:
-            alias[str_idx] = contract
-            contract += 1
-    return alias
+def preprocess_tensors(L):
+    """Prepare the tensors argument into a canonical form.
+
+    We want to handle the tensors as a list, regardless of what kind of
+    iterable we are given. In addition, if only a single element is given, we
+    make list out of it.
+    """
+    if hasattr(L, "shape"):
+        L = [L]
+    else:
+        L = list(L)
+    return L
 
 
-def str_to_int_idx(lst, alias):
-    """Update a list of string indices to integer indices."""
-    if not is_non_string_iterable(lst):
-        return alias[lst]
-    return list(map(lambda x: str_to_int_idx(x, alias), lst))
+def preprocess_indices(v):
+    """Prepare the indices argument into a canonical form.
+
+    We want to handle the indices as a nested list of lists.
+    """
+    if not is_non_string_iterable(v):
+        raise ValueError("v must be a non-string Iterable.")
+    v = list(v)
+    if not is_non_string_iterable(v[0]):
+        # v is not a list of lists, so make it such.
+        v = [v]
+    else:
+        v = list(map(list, v))
+    return v
+
+
+def preprocess_forder_order(arg, v, name):
+    """Prepare the order and forder arguments.
+
+    Make sure they are both lists, and supply default values if appropriate.
+    """
+    int_indices = indices_are_ints(v)
+    if arg is None:
+        if not int_indices:
+            msg = f"If non-int indices are used, {name} must be specified."
+            raise ValueError(msg)
+        default_creator = (
+            create_order
+            if name == "order"
+            else create_forder
+            if name == "forder"
+            else None
+        )
+        arg = default_creator(v)
+    else:
+        if not is_non_string_iterable(arg):
+            msg = f"If {name} is provided, it must be a non-string iterable."
+            raise ValueError(msg)
+        arg = list(arg)
+    return arg
 
 
 def create_order(v):
@@ -201,9 +183,8 @@ def create_forder(v):
 
 
 def connect_graph(L, v, order):
-    """Connect the graph of tensors to be contracted by trivial
-    indices, if necessary. Add these trivial indices to the end of the
-    contraction order.
+    """Connect the graph of tensors to be contracted by trivial indices, if
+    necessary. Add these trivial indices to the end of the contraction order.
 
     L, v and order are modified in place.
     """
@@ -223,15 +204,17 @@ def connect_graph(L, v, order):
             visited.add(i)
             # Get the indices of tensors neighbouring L[i].
             i_inds = set(v[i])
-            neighs = (j for j, j_inds in enumerate(v) if i_inds.intersection(j_inds))
+            neighs = (
+                j for j, j_inds in enumerate(v) if i_inds.intersection(j_inds)
+            )
             for neigh in neighs:
                 if neigh not in visited:
                     to_visit.add(neigh)
         ccomponents.append(component)
-    # If there is more than one connected component, take one of them, a
-    # take an arbitrary tensor (called c) out of it, and connect that
-    # tensor with an arbitrary tensor (called d) from all the other
-    # components using a trivial index.
+    # If there is more than one connected component, take one of them, a take
+    # an arbitrary tensor (called c) out of it, and connect that tensor with an
+    # arbitrary tensor (called d) from all the other components using a trivial
+    # index.
     c = ccomponents.pop().pop()
     while ccomponents:
         d = ccomponents.pop().pop()
@@ -270,7 +253,8 @@ def get_tcon(v, index):
     # checks should in fact be unnecessary.
     if l > 2:
         raise ValueError(
-            "In ncon.get_tcon, more than two tensors share a contraction " "index."
+            "In ncon.get_tcon, more than two tensors share a contraction "
+            "index."
         )
     elif l < 1:
         raise ValueError(
@@ -383,7 +367,9 @@ def do_check_indices(L, v, order, forder):
     # For t, o in zip(v_pairs, v_sum) t is the tuple of the number of
     # the tensor and the index and o is the contraction order of that
     # index. We group these tuples by the contraction order.
-    order_groups = [[t for t, o in zip(v_pairs, v_sum) if o == e] for e in order]
+    order_groups = [
+        [t for t, o in zip(v_pairs, v_sum) if o == e] for e in order
+    ]
     forder_groups = [[1 for fo in v_sum if fo == e] for e in forder]
     for i, o in enumerate(order_groups):
         if len(o) != 2:
@@ -405,7 +391,8 @@ def do_check_indices(L, v, order, forder):
                 raise ValueError(
                     "In ncon.do_check_indices, for the contraction index %i, "
                     "the leg %i of tensor number %i and the leg %i of tensor "
-                    "number %i are not compatible." % (order[i], ind0, A0, ind1, A1)
+                    "number %i are not compatible."
+                    % (order[i], ind0, A0, ind1, A1)
                 )
     for i, fo in enumerate(forder_groups):
         if len(fo) != 1:
