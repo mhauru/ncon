@@ -1,5 +1,5 @@
 # ncon
-[![][travis-img]][travis-url] [![][codecov-img]][codecov-url]
+[![][tests-workflow-img]][tests-workflow-url] [![][codecov-img]][codecov-url]
 
 ncon is a Python 3 package that implements the NCon function as described here:
 https://arxiv.org/abs/1402.0939
@@ -94,7 +94,7 @@ contractions are done in the order [1,2,3,4,5]. This may not be the optimal
 choice, in which case we should specify a better contraction order as a keyword
 argument.
 
-[travis-img]: https://travis-ci.org/mhauru/ncon.svg?branch=master
-[travis-url]: https://travis-ci.org/mhauru/ncon
+[tests-workflow-img]: https://github.com/mhauru/ncon/actions/workflows/tests-and-coverage.yaml/badge.svg
+[tests-workflow-url]: https://github.com/mhauru/ncon/actions/workflows/tests-and-coverage.yaml
 [codecov-img]: https://codecov.io/gh/mhauru/ncon/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/mhauru/ncon
