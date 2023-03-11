@@ -43,6 +43,10 @@ indices are to be permuted. By default it is
 `sorted(all-negative-numbers-in-v, reverse=True)`,
 meaning for instance `[-1,-2,...]`.
 
+If both `order` and `forder` are provided by the user, then objects other than
+integers can be used to label the indices. This has been tested with string
+labels, but in principle many other types of objects should work too.
+
 If `check_indices=True` (the default) then checks are performed to make sure
 the contraction is well-defined. If not, an `ValueError` with a helpful
 description of what went wrong is provided.
@@ -54,7 +58,7 @@ generate index lists and contractions.
 
 #### Examples
 
-Here's a few examples, straight from the test file.
+Here are a few examples, straight from the test file.
 
 A matrix product:
 ```
