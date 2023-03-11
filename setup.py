@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="ncon",
-    version="1.0.0",
+    version="2.0.0",
     author="Markus Hauru",
     author_email="markus@mhauru.org",
     description="Tensor network contraction function for Python 3.",
