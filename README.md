@@ -75,7 +75,8 @@ The one labeled with `-1` becomes the first index of the result. If we gave the
 additional argument `forder=[-2,-1]` the transpose would be returned instead.
 
 A more complicated example:
-```a = np.random.randn(3, 4, 5)
+```
+a = np.random.randn(3, 4, 5)
 b = np.random.randn(5, 3, 6, 7, 6)
 c = np.random.randn(7, 2)
 d = np.random.randn(8)
